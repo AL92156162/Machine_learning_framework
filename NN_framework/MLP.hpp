@@ -4,16 +4,11 @@
 #include "Utility.hpp"
 #include "Activation_functions.hpp"
 #include <functional>
+#include <string>
 
-float sigmoid(float x)
-{
-	return 1.0f / (1 + exp(-x));
-}
-
-float dSigmoid(float x)
-{
-	return (x * (1 - x));
-}
+class Layer {
+	//
+};
 
 class MLP {
 	std::vector<unsigned int> m_topology;
@@ -30,7 +25,7 @@ class MLP {
 	std::vector<Matrix<float>> m_weight_velocity_matrices;
 	std::vector<Matrix<float>> m_biais_velocity_matrices;
 
-	Losses losses();
+	Losses m_losses;
 
 public:
 
@@ -40,6 +35,7 @@ public:
 		m_momentum = momentum;
 		m_activation_fun = activation_fun;
 		m_derive_activation_fun = derive_activation_fun;
+		m_losses.select_loss("MSE");
 
 		for (int i = 0; i < topology.size()-1; ++i) {
 			Matrix<float> weight_mat = randomMatrix(topology[i], topology[i + 1]);
@@ -53,12 +49,30 @@ public:
 
 			Matrix<float> biais_velocity_mat(1, topology[i + 1]);
 			m_biais_velocity_matrices.push_back(biais_velocity_mat);
-
 		}
 
 		m_value_matrices.resize(topology.size());
 	}
 
+	std::vector<Matrix<float>> getWeights() {
+		return m_weight_matrices;
+	}
+
+	std::vector<Matrix<float>> getBiais() {
+		return m_biais_matrices;
+	}
+
+	std::vector<Matrix<float>> getValues() {
+		return m_value_matrices;
+	}
+
+	std::vector<Matrix<float>> getWeightsDelta() {
+		return m_weight_velocity_matrices;
+	}
+
+	std::vector<Matrix<float>> getBiaisDelta() {
+		return m_biais_velocity_matrices;
+	}
 	
 	std::vector<float> feedForward(std::vector<float> input) {
 
@@ -86,9 +100,8 @@ public:
 		}
 
 		std::vector<float> pred = feedForward(input);
-		Matrix errors(1, output.size(), output);
+		Matrix<float> errors(1, output.size(), output);
 		errors = errors - m_value_matrices.back();
-
 
 		for (int i = m_weight_matrices.size() - 1; i >= 0; --i) {
 			Matrix previous_errors = m_weight_matrices[i].transpose().multiply(errors);
@@ -114,15 +127,6 @@ public:
 		}
 	}
 
-	float error(std::vector<float> input, std::vector<float> output) {
-		std::vector<float> pred = feedForward(input);
-		float error = 0.0f;
-		for (int i = 0; i < pred.size(); ++i) {
-			error += pow(output[i] - pred[i],2);
-		}
-		return error;
-	}
-
 	Matrix<float> predict(Matrix<float> input) {
 		input = input.transpose();
 		std::vector<float> outvec = {};
@@ -133,14 +137,13 @@ public:
 			std::vector<float> out = feedForward(invec);
 			outvec.insert(outvec.end(), out.begin(), out.end());
 		}
-		Matrix output(input.height(), outvec.size()/input.height(), outvec);
+		Matrix<float> output(input.height(), outvec.size()/input.height(), outvec);
 		return output;
-
 	}
 
 	std::vector<float> fit(Matrix<float> input, Matrix<float> output, int epochs, bool verbose = false) {
 		int n_sample = input.width();
-		std::vector<float> errors(epochs);
+		std::vector<float> loss_values(epochs);
 
 		for (int i = 0; i < epochs; i++)
 		{
@@ -151,23 +154,24 @@ public:
 
 			std::vector<float> epoch_errors(n_sample);
 			for (int j = 0; j < input.width(); ++j) {
-
 				std::vector<float> invec = input.slice(j, j + 1, 0).vec();
 				std::vector<float> outvec = output.slice(j, j + 1, 0).vec();
-
 				backProgagate(invec, outvec);
-				epoch_errors.push_back(error(invec, outvec));
-				std::cout << j << std::endl;
 			}
-			errors[i] = average(epoch_errors);
+
+			Matrix<float> pred = predict(input);
+			Matrix<float> loss = m_losses(output, pred, true);
+
+			loss_values[i] = loss.getValue(0, 0);
+
 			if (verbose) {
 				std::cout << "=======================================================" << std::endl;
-				std::cout << "EPOCH : " << i << " ended" << std::endl;
-				std::cout << "Error = " << errors[i] << std::endl;
+				std::cout << "EPOCH : " << i << std::endl;
+				std::cout << "Loss = " << loss.getValue(0, 0) << std::endl;
 				std::cout << "=======================================================" << std::endl;
 			}
 		}
-		return errors;
+		return loss_values;
 	}
 
 };

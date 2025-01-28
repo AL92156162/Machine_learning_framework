@@ -103,28 +103,34 @@ int MNIST_learning() {
     std::cout << labels[0] << static_cast<int>(labels[0])<< std::endl;
 
     std::cout << "Preparing training data\n";
-    uint32_t n_image = 100;
-    //uint32_t n_image = images.size();
+    uint32_t n_image = 50;
     uint32_t width = images[0].width();
     uint32_t height = images[0].height();
 
     std::vector<unsigned char> imvec;
-    std::vector<float> yvec(n_image * 10);
+    std::vector<uint32_t> labels_true(n_image);
     for (uint32_t i = 0; i < n_image; ++i) {
         imvec.insert(imvec.end(), images[i].vec().begin(), images[i].vec().end());
-        yvec[labels[i] * n_image + i] = 1;
+        labels_true[i] = labels[i];
     }
 
-    //std::transform(imvec.cbegin(), imvec.cend(), imvec.begin(), static_cast<float>);
-
+    // Definition of X (width * height, n_image) then transpose
     std::vector<float> float_imvec(imvec.begin(), imvec.end());
+    Matrix<float> X(width * height, n_image, float_imvec);
+    X = X.transpose();
+    Matrix<float> y = oneHotEncode(labels_true);
+
+    X = normalizeMatrix(X);
+
+    writeMatrix("out/X_mnist.txt", X);
+
+    std::cout << std::endl;
+    for (int i = 0; i < n_image; ++i) {
+        std::cout << static_cast<int>(labels[i]) << ";";
+    }
+    std::cout << std::endl;
+    y.display();
     
-    Matrix<float> X(n_image, width * height, float_imvec);
-    Matrix<float> y(n_image, 10, yvec);
-
-
-    //X = normalizeMatrix(X);
-
     //std::vector<Matrix<float>> training_vec = { X, y };
     //shuffle(training_vec);
     //std::vector<Matrix<float>> train_test_matrices = split_train_test(training_vec, 0.8);
@@ -137,18 +143,40 @@ int MNIST_learning() {
     //Matrix y_test = train_test_matrices[3];
     ////y_test.display();
 
-
-
-
-    // creating neural network 2 input neurons, 3 hidden neurons and 1 output neuron 
+    //creating neural network 
     std::cout << "Building model\n";
-    std::vector<unsigned int> topology = { width*height, width * height / 2, 10 };
-    MLP model(topology, 0.1, 0.99, sigmoid, dSigmoid);
+    std::vector<unsigned int> topology = { width*height, 30, 10 };
+    MLP model(topology, 3.0, 0.1, sigmoid, dSigmoid);
     std::cout << "Training start\n";
-    std::vector<float> errors = model.fit(X, y, 100, true);
-    writeVector("MNIST_Error.txt", errors);
+    std::vector<float> loss = model.fit(X, y, 30, true);
+    writeVector("out/MNIST_loss.txt", loss);
+;
+    Matrix<float> y_pred = model.predict(X);
+    y_pred.display();
+    
+    Matrix<float> y_pred_classif = getClassificationPred(y_pred);
+    
+    //y.display();
+    //y_pred_classif.display();
+    
+    std::vector<uint32_t> labels_pred = oneHotDecode(y_pred_classif);
+    
+    DisplayVec(labels_true);
+    DisplayVec(labels_pred);
+    
+    std::cout << std::endl;
+    
+    float acc = accuracy(labels_true, labels_pred);
+    std::cout << "Accuracy : " << acc << std::endl;
+    
+    std::cout << std::endl;
+    
+    Matrix<float> cm = confusionMatrix(y, y_pred_classif);
+    cm.display();
 
-    //Matrix y_pred = model.predict(X);
+
+
+    // 
     //Matrix delta_mat = y - y_pred;
     //y.display();
     //std::cout << std::endl;

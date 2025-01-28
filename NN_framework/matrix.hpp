@@ -181,13 +181,11 @@ public:
 
     Matrix<T> applyFunction(std::function<float (const float&)> func) {
         Matrix<T> output(m_width, m_height);
-
         for (int i = 0; i < m_width; ++i) {
             for (int j = 0; j < m_height; ++j) {
                 output.setValue(i, j, func(getValue(i, j)));
             }
         }
-
         return output;
     }
 
@@ -223,7 +221,7 @@ public:
 Matrix<float> randomMatrix(const unsigned int width, const unsigned int height) {
     std::vector<float> vec(width * height);
     for (int i = 0; i < width * height; ++i) {
-        vec[i] = (float)rand() / RAND_MAX;
+        vec[i] = ((float)rand() / RAND_MAX)*2-1;
     }
     Matrix<float> out(width, height, vec);
     return out;

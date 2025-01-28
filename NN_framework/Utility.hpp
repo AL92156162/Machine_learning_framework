@@ -110,3 +110,86 @@ Matrix<T> normalizeMatrix(Matrix<T>& mat) {
     Matrix<T> res = A.multiply_elementwise(mat) + B;
     return res;
 }
+
+template <typename T>
+Matrix<float> oneHotEncode(std::vector<T> vec) {
+    int n = vec.size();
+    auto max_ptr = std::max_element(vec.begin(), vec.end());
+    float max_val = *max_ptr;
+    std::vector<float> one_hot_vec(n * (max_val+1));
+    for (uint32_t i = 0; i < n; ++i) {
+        one_hot_vec[vec[i] * n + i] = 1;
+    }
+    Matrix<float> one_hot_mat(n, max_val+1, one_hot_vec);
+    return one_hot_mat;
+}
+
+template <typename T>
+std::vector<uint32_t> oneHotDecode(Matrix<T> mat) {
+    uint32_t n_sample = mat.width();
+    uint32_t n_class = mat.height();
+    std::vector<uint32_t> labels(n_sample);
+    for (uint32_t i = 0; i < n_sample; ++i) {
+        for (uint32_t j = 0; j < n_class; ++j) {
+            if (mat.getValue(i, j) == 1) {
+                labels[i] = j;
+            }
+        }
+    }
+    return labels;
+}
+
+template <typename T>
+Matrix<T> getClassificationPred(Matrix<T> y_pred) {
+    Matrix<T> y_pred_classif(y_pred.width(), y_pred.height());
+    for (int i = 0; i < y_pred.width(); ++i) {
+        std::vector<T> vec = y_pred.slice(i, i + 1, 0).vec();
+        float max_val = 0;
+        int max_idx = 0;
+        for (int j = 0; j < vec.size(); ++j) {
+            if (vec[j] > max_val) {
+                max_val = vec[j];
+                max_idx = j;
+            }
+        }
+        y_pred_classif.setValue(i, max_idx, 1);
+    }
+    return y_pred_classif;
+}
+
+
+template <typename T>
+float accuracy(std::vector<T> y_true, std::vector<T> y_pred) {
+    uint32_t n_sample = y_true.size();
+    float accuracy = 0.0f;
+    for (uint32_t i = 0; i < n_sample; ++i) {
+        accuracy += y_true[i] == y_pred[i];
+    }
+    return accuracy / n_sample;
+}
+
+template <typename T>
+Matrix<float> confusionMatrix(Matrix<T> y_true, Matrix<T> y_pred) {
+
+    if (y_true.width() != y_pred.width() || y_true.height() != y_pred.height()) {
+        throw std::logic_error("y_true and y_pred are not the same shape");
+    }
+    
+    int n_class = y_true.height();
+    Matrix<float> cm(n_class, n_class);
+
+    for (int i = 0; i < y_true.width(); ++i) {
+        int true_class = -1;
+        int pred_class = -1;
+        for (int j = 0; j < n_class; ++j) {
+            if (y_true.getValue(i, j) == 1) {
+                true_class = j;
+            }
+            if (y_pred.getValue(i, j) == 1) {
+                pred_class = j;
+            }
+        }
+        cm.setValue(true_class, pred_class, cm.getValue(true_class, pred_class) + 1);
+    }
+    return cm;
+}
