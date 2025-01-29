@@ -103,7 +103,7 @@ int MNIST_learning() {
     std::cout << labels[0] << static_cast<int>(labels[0])<< std::endl;
 
     std::cout << "Preparing training data\n";
-    uint32_t n_image = 50;
+    uint32_t n_image = 500;
     uint32_t width = images[0].width();
     uint32_t height = images[0].height();
 
@@ -146,14 +146,20 @@ int MNIST_learning() {
     //creating neural network 
     std::cout << "Building model\n";
     std::vector<unsigned int> topology = { width*height, 30, 10 };
-    MLP model(topology, 3.0, 0.1, sigmoid, dSigmoid);
+    MLP model(topology, 1.0, 0.0, sigmoid, dSigmoid);
+
     std::cout << "Training start\n";
-    std::vector<float> loss = model.fit(X, y, 30, true);
+    std::vector<float> loss = model.fit(X, y, 100, true);
     writeVector("out/MNIST_loss.txt", loss);
 ;
     Matrix<float> y_pred = model.predict(X);
     y_pred.display();
     
+
+    Losses m_losses("CCE");
+    Matrix<float> loss2 = m_losses(y, y_pred, true);
+    std::cout << "Loss : " << loss2.getValue(0, 0) << std::endl;
+
     Matrix<float> y_pred_classif = getClassificationPred(y_pred);
     
     //y.display();
@@ -175,8 +181,6 @@ int MNIST_learning() {
     cm.display();
 
 
-
-    // 
     //Matrix delta_mat = y - y_pred;
     //y.display();
     //std::cout << std::endl;

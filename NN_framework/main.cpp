@@ -13,9 +13,9 @@ int main() {
 
 	//Test_matrix();
 
-	//XOR_learning();
+	XOR_learning();
 
-	MNIST_learning();
+	//MNIST_learning();
 
 	//std::vector<float> vec_true = { 0.5, -1 ,7, 1, 1, -6 };
 	//Matrix<float> y_true(3, 2, vec_true);

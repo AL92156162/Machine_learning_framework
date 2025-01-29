@@ -9,7 +9,7 @@ float sigmoid(float x)
 }
 float dSigmoid(float x)
 {
-	return (x * (1 - x));
+	return (sigmoid(x) * (1 - sigmoid(x)));
 }
 
 //RELU

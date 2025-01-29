@@ -5,6 +5,7 @@ int XOR_learning() {
 	// creating neural network 2 input neurons, 3 hidden neurons and 1 output neuron 
 	std::vector<unsigned int> topology = { 2,3,1 };
 	MLP model(topology, 0.1, 0.0, sigmoid, dSigmoid);
+	//MLP model(topology, 0.1, 0.0, relu, dRelu);
 
 	//sample dataset
 	std::vector<std::vector<float>> targetInputs = {
@@ -22,7 +23,7 @@ int XOR_learning() {
 
 
 	//Build training set
-	int n_sample = 1;
+	int n_sample = 100;
 	std::vector<float> xvec(2 * n_sample);
 	std::vector<float> yvec(n_sample);
 	for (uint32_t i = 0; i < n_sample; i++)
@@ -75,7 +76,7 @@ int XOR_learning() {
 
 	//testing the neural network
 
-	std::vector<float> errors = model.fit(X, y, 1, false);
+	std::vector<float> errors = model.fit(X, y, 100, true);
 	writeVector("out/XOR_loss.txt", errors);
 
 	Matrix y_pred = model.predict(X);
@@ -86,8 +87,7 @@ int XOR_learning() {
 	std::cout << std::endl;
 	delta_mat.display();
 
-
-	std::vector<Matrix<float>> weights = model.getWeights();
+	/*std::vector<Matrix<float>> weights = model.getWeights();
 	std::vector<Matrix<float>> biais = model.getBiais();
 	std::vector<Matrix<float>> values = model.getValues();
 	std::vector<Matrix<float>> weights_delta = model.getWeightsDelta();
@@ -112,7 +112,7 @@ int XOR_learning() {
 	std::cout << "delta Biais : " << std::endl;
 	for (int i = 0; i < biais_delta.size(); ++i) {
 		biais_delta[i].display();
-	}
+	}*/
 
 	return 0;
 }

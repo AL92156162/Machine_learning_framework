@@ -6,9 +6,37 @@
 #include <functional>
 #include <string>
 
-class Layer {
-	//
-};
+//class Layer {
+//	
+//	uint32_t m_size;
+//	char m_type;
+//	Matrix<float> m_weights;
+//	Matrix<float> m_values;
+//	Matrix<float> m_bias;
+//
+//	std::function<float(const float&)> m_activation_fun;
+//	std::function<float(const float&)> m_derive_activation_fun;
+//
+//public:
+//
+//	Layer(const uint32_t size,
+//		const char type,
+//		std::function<float(const float&)> activation_fun,
+//		std::function<float(const float&)> derive_activation_fun);
+//
+//	std::pair<int, int> shape() const {
+//		std::pair<int, int> shape = { m_weights.width(), m_weights.height() };
+//		return shape; 
+//	}
+//	const uint32_t size() const { return m_size; }
+//	const char type() const { return m_type; }
+//	const Matrix<float> weights() const { return m_weights; }
+//	const Matrix<float> bias() const { return m_bias; }
+//
+//	void initialize(std::pair<int, int> shape);
+//	Matrix<float> feedForward(Matrix<float> input);
+//
+//};
 
 class MLP {
 	std::vector<unsigned int> m_topology;
@@ -22,14 +50,19 @@ class MLP {
 	std::vector<Matrix<float>> m_value_matrices;
 	std::vector<Matrix<float>> m_biais_matrices;
 
-	std::vector<Matrix<float>> m_weight_velocity_matrices;
-	std::vector<Matrix<float>> m_biais_velocity_matrices;
+	std::vector<Matrix<float>> m_weight_delta_matrices;
+	std::vector<Matrix<float>> m_biais_delta_matrices;
 
 	Losses m_losses;
 
 public:
 
-	MLP(std::vector<unsigned int> topology, float learning_rate, float momentum, std::function<float(const float&)> activation_fun, std::function<float(const float&)> derive_activation_fun) {
+	MLP(std::vector<unsigned int> topology, 
+		float learning_rate, 
+		float momentum, 
+		std::function<float(const float&)> activation_fun, 
+		std::function<float(const float&)> derive_activation_fun) {
+
 		m_topology = topology;
 		m_learning_rate = learning_rate;
 		m_momentum = momentum;
@@ -42,13 +75,13 @@ public:
 			m_weight_matrices.push_back(weight_mat);
 
 			Matrix<float> weight_velocity_mat(topology[i], topology[i + 1]);
-			m_weight_velocity_matrices.push_back(weight_velocity_mat);
+			m_weight_delta_matrices.push_back(weight_velocity_mat);
 
 			Matrix<float> biais_mat = randomMatrix(1, topology[i + 1]);
 			m_biais_matrices.push_back(biais_mat);
 
 			Matrix<float> biais_velocity_mat(1, topology[i + 1]);
-			m_biais_velocity_matrices.push_back(biais_velocity_mat);
+			m_biais_delta_matrices.push_back(biais_velocity_mat);
 		}
 
 		m_value_matrices.resize(topology.size());
@@ -67,11 +100,11 @@ public:
 	}
 
 	std::vector<Matrix<float>> getWeightsDelta() {
-		return m_weight_velocity_matrices;
+		return m_weight_delta_matrices;
 	}
 
 	std::vector<Matrix<float>> getBiaisDelta() {
-		return m_biais_velocity_matrices;
+		return m_biais_delta_matrices;
 	}
 	
 	std::vector<float> feedForward(std::vector<float> input) {
@@ -108,22 +141,25 @@ public:
 
 			// Compute delta for biais and weights
 			Matrix out_mat = m_value_matrices[i+1].applyFunction(m_derive_activation_fun);
+			//Matrix out_mat = m_value_matrices[i + 1];
 			Matrix gradient = errors.multiply_elementwise(out_mat);
-			gradient = gradient.multiply(m_learning_rate);
+			//gradient = gradient.multiply(m_learning_rate);
 
 			Matrix val_t = m_value_matrices[i].transpose();
 			Matrix weight_gradient = gradient.multiply(val_t);
 
-			Matrix biais_velocity = m_biais_velocity_matrices[i].multiply(m_momentum) + gradient;
-			Matrix weight_velocity = m_weight_velocity_matrices[i].multiply(m_momentum) + weight_gradient;
-
-			// Adjust values
-			m_biais_matrices[i] = m_biais_matrices[i] + biais_velocity;
-			m_weight_matrices[i] = m_weight_matrices[i] + weight_velocity;
+			//Matrix biais_velocity = m_biais_delta_matrices[i].multiply(m_momentum) + gradient;
+			//Matrix weight_velocity = m_weight_delta_matrices[i].multiply(m_momentum) + weight_gradient;
+			
 
 			errors = previous_errors;
-			m_biais_velocity_matrices[i] = biais_velocity;
-			m_weight_velocity_matrices[i] = weight_velocity;
+			//m_biais_delta_matrices[i] = biais_velocity;
+			//m_weight_delta_matrices[i] = weight_velocity;
+			m_biais_delta_matrices[i] = gradient;
+			m_weight_delta_matrices[i] = weight_gradient;
+
+			m_biais_matrices[i] = m_biais_matrices[i] + m_biais_delta_matrices[i].multiply(m_learning_rate);
+			m_weight_matrices[i] = m_weight_matrices[i] + m_weight_delta_matrices[i].multiply(m_learning_rate);
 		}
 	}
 
@@ -157,6 +193,12 @@ public:
 				std::vector<float> invec = input.slice(j, j + 1, 0).vec();
 				std::vector<float> outvec = output.slice(j, j + 1, 0).vec();
 				backProgagate(invec, outvec);
+
+				// Adjust values
+				//for (int i = m_weight_matrices.size() - 1; i >= 0; --i) {
+				//	m_biais_matrices[i] = m_biais_matrices[i] + m_biais_delta_matrices[i].multiply(m_learning_rate);
+				//	m_weight_matrices[i] = m_weight_matrices[i] + m_weight_delta_matrices[i].multiply(m_learning_rate);
+				//}
 			}
 
 			Matrix<float> pred = predict(input);
